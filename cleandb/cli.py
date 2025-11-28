@@ -104,8 +104,6 @@ Examples:
             return 1
         finally:
             conn.close()
-    
-    return 0
 
 
 if __name__ == "__main__":

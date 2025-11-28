@@ -20,38 +20,41 @@ class TestDatabaseCleaner(unittest.TestCase):
         self.conn = sqlite3.connect(self.db_path)
         cursor = self.conn.cursor()
         
-        # Create test tables
-        cursor.execute("""
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                email TEXT
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT,
-                content TEXT,
-                user_id INTEGER
-            )
-        """)
-        
-        # Insert test data
-        users_data = [
-            ("Alice", "alice@example.com"),
-            ("Bob", "bob@example.com")
-        ]
-        cursor.executemany("INSERT INTO users (name, email) VALUES (?, ?)", users_data)
-        
-        posts_data = [
-            ("Post 1", "Content 1", 1),
-            ("Post 2", "Content 2", 2)
-        ]
-        cursor.executemany("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)", posts_data)
-        
-        self.conn.commit()
+        try:
+            # Create test tables
+            cursor.execute("""
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    email TEXT
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE TABLE posts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT,
+                    content TEXT,
+                    user_id INTEGER
+                )
+            """)
+            
+            # Insert test data
+            users_data = [
+                ("Alice", "alice@example.com"),
+                ("Bob", "bob@example.com")
+            ]
+            cursor.executemany("INSERT INTO users (name, email) VALUES (?, ?)", users_data)
+            
+            posts_data = [
+                ("Post 1", "Content 1", 1),
+                ("Post 2", "Content 2", 2)
+            ]
+            cursor.executemany("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)", posts_data)
+            
+            self.conn.commit()
+        finally:
+            cursor.close()
     
     def tearDown(self):
         """Clean up after each test."""
