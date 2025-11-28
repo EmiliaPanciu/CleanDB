@@ -16,6 +16,7 @@ class DatabaseCleaner:
         """
         self.connection = connection
         self.db_type = self._detect_database_type()
+        self._tables_cache = None
     
     def _detect_database_type(self) -> str:
         """Detect the type of database from the connection object."""
@@ -65,13 +66,16 @@ class DatabaseCleaner:
         Raises:
             ValueError: If the table doesn't exist
         """
-        valid_tables = self.get_all_tables()
-        if table_name not in valid_tables:
+        # Use cached table list if available
+        if self._tables_cache is None:
+            self._tables_cache = self._get_all_tables_uncached()
+        
+        if table_name not in self._tables_cache:
             raise ValueError(f"Table '{table_name}' does not exist in the database")
     
-    def get_all_tables(self) -> List[str]:
+    def _get_all_tables_uncached(self) -> List[str]:
         """
-        Get a list of all tables in the database.
+        Get a list of all tables in the database (uncached).
         
         Returns:
             List of table names
@@ -94,6 +98,16 @@ class DatabaseCleaner:
         tables = [row[0] for row in cursor.fetchall()]
         cursor.close()
         return tables
+    
+    def get_all_tables(self) -> List[str]:
+        """
+        Get a list of all tables in the database.
+        
+        Returns:
+            List of table names
+        """
+        # Always fetch fresh list for this public method
+        return self._get_all_tables_uncached()
     
     def empty_table(self, table_name: str, reset_autoincrement: bool = True) -> None:
         """
@@ -154,12 +168,19 @@ class DatabaseCleaner:
         """
         exclude_tables = exclude_tables or []
         tables = self.get_all_tables()
+        
+        # Populate cache for efficient validation of multiple tables
+        self._tables_cache = tables
+        
         emptied_count = 0
         
         for table in tables:
             if table not in exclude_tables:
                 self.empty_table(table, reset_autoincrement=reset_autoincrement)
                 emptied_count += 1
+        
+        # Clear cache after operation
+        self._tables_cache = None
         
         return emptied_count
     

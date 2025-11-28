@@ -76,19 +76,22 @@ class TestDatabaseCleaner(unittest.TestCase):
         
         # Verify data exists
         cursor = self.conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
-        self.assertEqual(cursor.fetchone()[0], 2)
-        
-        # Empty the table
-        cleaner.empty_table("users")
-        
-        # Verify table is empty
-        cursor.execute("SELECT COUNT(*) FROM users")
-        self.assertEqual(cursor.fetchone()[0], 0)
-        
-        # Verify other table still has data
-        cursor.execute("SELECT COUNT(*) FROM posts")
-        self.assertEqual(cursor.fetchone()[0], 2)
+        try:
+            cursor.execute("SELECT COUNT(*) FROM users")
+            self.assertEqual(cursor.fetchone()[0], 2)
+            
+            # Empty the table
+            cleaner.empty_table("users")
+            
+            # Verify table is empty
+            cursor.execute("SELECT COUNT(*) FROM users")
+            self.assertEqual(cursor.fetchone()[0], 0)
+            
+            # Verify other table still has data
+            cursor.execute("SELECT COUNT(*) FROM posts")
+            self.assertEqual(cursor.fetchone()[0], 2)
+        finally:
+            cursor.close()
     
     def test_empty_database(self):
         """Test emptying entire database."""
@@ -102,10 +105,13 @@ class TestDatabaseCleaner(unittest.TestCase):
         
         # Verify all tables are empty
         cursor = self.conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
-        self.assertEqual(cursor.fetchone()[0], 0)
-        cursor.execute("SELECT COUNT(*) FROM posts")
-        self.assertEqual(cursor.fetchone()[0], 0)
+        try:
+            cursor.execute("SELECT COUNT(*) FROM users")
+            self.assertEqual(cursor.fetchone()[0], 0)
+            cursor.execute("SELECT COUNT(*) FROM posts")
+            self.assertEqual(cursor.fetchone()[0], 0)
+        finally:
+            cursor.close()
     
     def test_empty_database_with_exclusions(self):
         """Test emptying database with excluded tables."""
@@ -119,12 +125,15 @@ class TestDatabaseCleaner(unittest.TestCase):
         
         # Verify 'posts' is empty
         cursor = self.conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM posts")
-        self.assertEqual(cursor.fetchone()[0], 0)
-        
-        # Verify 'users' still has data
-        cursor.execute("SELECT COUNT(*) FROM users")
-        self.assertEqual(cursor.fetchone()[0], 2)
+        try:
+            cursor.execute("SELECT COUNT(*) FROM posts")
+            self.assertEqual(cursor.fetchone()[0], 0)
+            
+            # Verify 'users' still has data
+            cursor.execute("SELECT COUNT(*) FROM users")
+            self.assertEqual(cursor.fetchone()[0], 2)
+        finally:
+            cursor.close()
     
     def test_autoincrement_reset(self):
         """Test that auto-increment is reset after emptying."""
@@ -135,14 +144,17 @@ class TestDatabaseCleaner(unittest.TestCase):
         
         # Insert a new record
         cursor = self.conn.cursor()
-        cursor.execute("INSERT INTO users (name, email) VALUES (?, ?)", 
-                      ("Charlie", "charlie@example.com"))
-        self.conn.commit()
-        
-        # The new record should have id=1 (auto-increment was reset)
-        cursor.execute("SELECT id FROM users WHERE name='Charlie'")
-        new_id = cursor.fetchone()[0]
-        self.assertEqual(new_id, 1)
+        try:
+            cursor.execute("INSERT INTO users (name, email) VALUES (?, ?)", 
+                          ("Charlie", "charlie@example.com"))
+            self.conn.commit()
+            
+            # The new record should have id=1 (auto-increment was reset)
+            cursor.execute("SELECT id FROM users WHERE name='Charlie'")
+            new_id = cursor.fetchone()[0]
+            self.assertEqual(new_id, 1)
+        finally:
+            cursor.close()
     
     def test_context_manager(self):
         """Test using DatabaseCleaner as a context manager."""
@@ -160,8 +172,11 @@ class TestDatabaseCleaner(unittest.TestCase):
         
         # Verify table is still empty
         cursor = self.conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
-        self.assertEqual(cursor.fetchone()[0], 0)
+        try:
+            cursor.execute("SELECT COUNT(*) FROM users")
+            self.assertEqual(cursor.fetchone()[0], 0)
+        finally:
+            cursor.close()
     
     def test_invalid_table_name(self):
         """Test that emptying a non-existent table raises an error."""

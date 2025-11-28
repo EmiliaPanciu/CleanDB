@@ -66,19 +66,27 @@ Examples:
             
             tables = cleaner.get_all_tables()
             exclude_tables = args.exclude or []
-            tables_to_clean = [t for t in tables if t not in exclude_tables]
+            # Filter exclude_tables to only include tables that actually exist
+            actual_exclude_tables = [t for t in exclude_tables if t in tables]
+            tables_to_clean = [t for t in tables if t not in actual_exclude_tables]
+            
+            # Warn about non-existent excluded tables
+            invalid_excludes = [t for t in exclude_tables if t not in tables]
+            if invalid_excludes:
+                print(f"Warning: The following excluded tables don't exist: {', '.join(invalid_excludes)}", 
+                      file=sys.stderr)
             
             if args.dry_run:
                 print(f"Would empty {len(tables_to_clean)} table(s):")
                 for table in tables_to_clean:
                     print(f"  - {table}")
-                if exclude_tables:
-                    print(f"\nExcluding {len(exclude_tables)} table(s):")
-                    for table in exclude_tables:
+                if actual_exclude_tables:
+                    print(f"\nExcluding {len(actual_exclude_tables)} table(s):")
+                    for table in actual_exclude_tables:
                         print(f"  - {table}")
             else:
                 emptied = cleaner.empty_database(
-                    exclude_tables=exclude_tables,
+                    exclude_tables=actual_exclude_tables,
                     reset_autoincrement=not args.no_reset_autoincrement
                 )
                 print(f"Successfully emptied {emptied} table(s)")
