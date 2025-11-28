@@ -54,6 +54,14 @@ Examples:
     if args.sqlite:
         try:
             conn = sqlite3.connect(args.sqlite)
+        except sqlite3.Error as e:
+            print(f"Error connecting to database '{args.sqlite}': {e}", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"Unexpected error opening database '{args.sqlite}': {e}", file=sys.stderr)
+            return 1
+        
+        try:
             cleaner = DatabaseCleaner(conn)
             
             tables = cleaner.get_all_tables()
@@ -75,12 +83,19 @@ Examples:
                 )
                 print(f"Successfully emptied {emptied} table(s)")
             
-            conn.close()
             return 0
             
-        except Exception as e:
+        except sqlite3.Error as e:
+            print(f"Database error: {e}", file=sys.stderr)
+            return 1
+        except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
+        except Exception as e:
+            print(f"Unexpected error: {e}", file=sys.stderr)
+            return 1
+        finally:
+            conn.close()
     
     return 0
 

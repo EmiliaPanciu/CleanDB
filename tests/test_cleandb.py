@@ -39,12 +39,17 @@ class TestDatabaseCleaner(unittest.TestCase):
         """)
         
         # Insert test data
-        cursor.execute("INSERT INTO users (name, email) VALUES (?, ?)", ("Alice", "alice@example.com"))
-        cursor.execute("INSERT INTO users (name, email) VALUES (?, ?)", ("Bob", "bob@example.com"))
-        cursor.execute("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)", 
-                      ("Post 1", "Content 1", 1))
-        cursor.execute("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)", 
-                      ("Post 2", "Content 2", 2))
+        users_data = [
+            ("Alice", "alice@example.com"),
+            ("Bob", "bob@example.com")
+        ]
+        cursor.executemany("INSERT INTO users (name, email) VALUES (?, ?)", users_data)
+        
+        posts_data = [
+            ("Post 1", "Content 1", 1),
+            ("Post 2", "Content 2", 2)
+        ]
+        cursor.executemany("INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)", posts_data)
         
         self.conn.commit()
     
@@ -157,6 +162,16 @@ class TestDatabaseCleaner(unittest.TestCase):
         cursor = self.conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM users")
         self.assertEqual(cursor.fetchone()[0], 0)
+    
+    def test_invalid_table_name(self):
+        """Test that emptying a non-existent table raises an error."""
+        cleaner = DatabaseCleaner(self.conn)
+        
+        # Try to empty a table that doesn't exist
+        with self.assertRaises(ValueError) as context:
+            cleaner.empty_table("nonexistent_table")
+        
+        self.assertIn("does not exist", str(context.exception))
 
 
 if __name__ == "__main__":

@@ -23,7 +23,6 @@ class DatabaseCleaner:
             return "sqlite"
         
         # Check for psycopg2 connection
-        connection_type = type(self.connection).__name__
         if "psycopg2" in str(type(self.connection).__module__):
             return "postgresql"
         
@@ -32,6 +31,43 @@ class DatabaseCleaner:
             return "mysql"
         
         return "unknown"
+    
+    def _quote_identifier(self, identifier: str) -> str:
+        """
+        Safely quote a database identifier (table name).
+        
+        Args:
+            identifier: The identifier to quote
+            
+        Returns:
+            Quoted identifier appropriate for the database type
+        """
+        if self.db_type == "sqlite":
+            # SQLite uses double quotes for identifiers
+            # Escape any double quotes in the identifier
+            return '"' + identifier.replace('"', '""') + '"'
+        elif self.db_type == "postgresql":
+            # PostgreSQL uses double quotes for identifiers
+            return '"' + identifier.replace('"', '""') + '"'
+        elif self.db_type == "mysql":
+            # MySQL uses backticks for identifiers
+            return '`' + identifier.replace('`', '``') + '`'
+        else:
+            raise ValueError(f"Unsupported database type: {self.db_type}")
+    
+    def _validate_table_name(self, table_name: str) -> None:
+        """
+        Validate that a table name exists in the database.
+        
+        Args:
+            table_name: The table name to validate
+            
+        Raises:
+            ValueError: If the table doesn't exist
+        """
+        valid_tables = self.get_all_tables()
+        if table_name not in valid_tables:
+            raise ValueError(f"Table '{table_name}' does not exist in the database")
     
     def get_all_tables(self) -> List[str]:
         """
@@ -66,25 +102,35 @@ class DatabaseCleaner:
         Args:
             table_name: Name of the table to empty
             reset_autoincrement: Whether to reset auto-increment counters (default: True)
+            
+        Raises:
+            ValueError: If the table doesn't exist
         """
+        # Validate table name to prevent SQL injection
+        self._validate_table_name(table_name)
+        
         cursor = self.connection.cursor()
+        quoted_table = self._quote_identifier(table_name)
         
         if self.db_type == "sqlite":
-            cursor.execute(f"DELETE FROM {table_name}")
+            cursor.execute(f"DELETE FROM {quoted_table}")
             if reset_autoincrement:
                 # sqlite_sequence only exists if there are AUTOINCREMENT columns
                 cursor.execute(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence'"
                 )
                 if cursor.fetchone():
-                    cursor.execute(f"DELETE FROM sqlite_sequence WHERE name='{table_name}'")
+                    cursor.execute(
+                        "DELETE FROM sqlite_sequence WHERE name=?",
+                        (table_name,)
+                    )
         elif self.db_type == "postgresql":
             if reset_autoincrement:
-                cursor.execute(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE")
+                cursor.execute(f"TRUNCATE TABLE {quoted_table} RESTART IDENTITY CASCADE")
             else:
-                cursor.execute(f"TRUNCATE TABLE {table_name} CASCADE")
+                cursor.execute(f"TRUNCATE TABLE {quoted_table} CASCADE")
         elif self.db_type == "mysql":
-            cursor.execute(f"TRUNCATE TABLE {table_name}")
+            cursor.execute(f"TRUNCATE TABLE {quoted_table}")
         else:
             raise ValueError(f"Unsupported database type: {self.db_type}")
         
